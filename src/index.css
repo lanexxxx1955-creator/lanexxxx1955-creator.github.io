@@ -1,0 +1,237 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+    --primary: 240 5.9% 10%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 240 5.9% 10%;
+    --radius: 0.625rem;
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 240 5.9% 10%;
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 240 4.9% 83.9%;
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    background: #04060c;
+    color: #e8ecf4;
+    font-family: 'Inter', -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    overscroll-behavior: none;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+  #root {
+    min-height: 100dvh;
+  }
+}
+
+/* ---------- 3D coin ---------- */
+.coin-toss {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.coin-scene {
+  position: relative;
+  width: min(62vw, 248px);
+  height: min(62vw, 248px);
+  perspective: 1100px;
+}
+
+.coin-float {
+  animation: coin-float 5.5s ease-in-out infinite;
+}
+
+@keyframes coin-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+.coin-scene::before {
+  content: '';
+  position: absolute;
+  inset: -22%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(248, 226, 142, 0.28) 0%, rgba(244, 207, 94, 0.08) 45%, transparent 70%);
+  pointer-events: none;
+}
+
+.coin {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transition-property: transform;
+  transition-timing-function: cubic-bezier(0.12, 0.65, 0.12, 1);
+  will-change: transform;
+}
+
+.coin-layer {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: repeating-conic-gradient(#e8c552 0deg 3deg, #7a5a08 3deg 6deg);
+}
+
+.coin-face-wrap {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+}
+
+.coin-face {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  overflow: hidden;
+  background: radial-gradient(circle at 35% 28%, #ffeaa6 0%, #f4cf5e 32%, #d9a824 64%, #9a6f08 100%);
+  box-shadow:
+    inset 0 0 0 2px #7a5a08,
+    inset 0 6px 14px rgba(255, 255, 255, 0.5),
+    inset 0 -10px 18px rgba(80, 55, 0, 0.5);
+}
+
+/* travelling mint-luster sweep */
+.coin-sheen {
+  position: absolute;
+  inset: -30%;
+  background: linear-gradient(
+    115deg,
+    transparent 38%,
+    rgba(255, 255, 255, 0.34) 47%,
+    rgba(255, 248, 214, 0.42) 50%,
+    rgba(255, 255, 255, 0.34) 53%,
+    transparent 62%
+  );
+  transform: translateX(-80%);
+  animation: coin-sheen 5.5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes coin-sheen {
+  0%, 55% { transform: translateX(-80%); }
+  85%, 100% { transform: translateX(80%); }
+}
+
+.coin-shadow {
+  width: 62%;
+  height: 18px;
+  margin-top: 30px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  filter: blur(12px);
+}
+
+.coin-toss-active .coin-float {
+  animation: none;
+}
+
+.coin-toss-active .coin-scene {
+  animation: coin-toss var(--spin-duration, 3s) cubic-bezier(0.2, 0.6, 0.2, 1);
+}
+
+.coin-toss-active .coin-shadow {
+  animation: coin-shadow var(--spin-duration, 3s) cubic-bezier(0.2, 0.6, 0.2, 1);
+}
+
+@keyframes coin-toss {
+  0% { transform: translateY(0) scale(1) rotateX(0deg); }
+  22% { transform: translateY(-84px) scale(1.08) rotateX(16deg); }
+  55% { transform: translateY(-36px) scale(1.03) rotateX(-9deg); }
+  100% { transform: translateY(0) scale(1) rotateX(0deg); }
+}
+
+@keyframes coin-shadow {
+  0% { transform: scaleX(1); opacity: 0.6; }
+  22% { transform: scaleX(0.55); opacity: 0.25; }
+  55% { transform: scaleX(0.8); opacity: 0.45; }
+  100% { transform: scaleX(1); opacity: 0.6; }
+}
+
+/* ---------- result banner ---------- */
+@keyframes result-pop {
+  0% { transform: scale(0.4); opacity: 0; }
+  60% { transform: scale(1.12); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.result-pop {
+  animation: result-pop 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+
+@keyframes hint-pulse {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 1; }
+}
+
+.hint-pulse {
+  animation: hint-pulse 1.8s ease-in-out infinite;
+}
+
+/* ---------- referral CTA ---------- */
+@keyframes cta-rise {
+  0% { transform: translateY(24px) scale(0.96); opacity: 0; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+.cta-rise {
+  animation: cta-rise 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.1);
+}
