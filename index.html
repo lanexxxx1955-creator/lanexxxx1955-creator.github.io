@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="ru" class="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta name="theme-color" content="#04060c" />
+<meta name="author" content="ALIAKSANDR LEMESHAU (LANEX)" />
+<meta name="description" content="Trader's Coin by ALIAKSANDR LEMESHAU (LANEX) — золотая монета для трейдера: Buy или Sell в момент неопределённости." />
+<title>Trader's Coin — Buy or Sell</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+html,body { height:100%; }
+body {
+  background:#04060c; color:#e8ecf4;
+  font-family:'Inter',-apple-system,'Segoe UI',sans-serif;
+  overscroll-behavior:none; -webkit-tap-highlight-color:transparent; user-select:none;
+}
+#app { position:relative; display:flex; flex-direction:column; min-height:100dvh; overflow:hidden; }
+#chart { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
+.vignette { position:absolute; inset:0; pointer-events:none;
+  background:radial-gradient(ellipse at center,transparent 0%,rgba(4,6,12,.55) 70%,rgba(4,6,12,.9) 100%); }
+.layout { position:relative; z-index:10; display:flex; flex-direction:column; align-items:center;
+  justify-content:space-between; min-height:100dvh; padding:max(env(safe-area-inset-top),20px) 24px 40px; }
+header { display:flex; flex-direction:column; align-items:center; gap:6px; width:100%; }
+.title-row { display:flex; align-items:center; gap:8px; }
+.btc { font-size:20px; font-weight:900; color:#f7931a; }
+h1 { font-size:14px; font-weight:800; text-transform:uppercase; letter-spacing:.3em; color:#e2e8f0; }
+.subtitle { font-size:11px; letter-spacing:.025em; color:#64748b; }
+.stats { margin-top:12px; display:flex; gap:12px; }
+.chip { display:flex; align-items:center; gap:6px; border-radius:9999px; padding:4px 12px; border:1px solid; }
+.chip .lbl { font-size:10px; font-weight:700; letter-spacing:.1em; }
+.chip .val { font-size:14px; font-weight:900; font-variant-numeric:tabular-nums; }
+.chip.buy { border-color:rgba(16,185,129,.3); background:rgba(16,185,129,.1); }
+.chip.buy .lbl { color:#34d399; } .chip.buy .val { color:#6ee7b7; }
+.chip.sell { border-color:rgba(239,68,68,.3); background:rgba(239,68,68,.1); }
+.chip.sell .lbl { color:#f87171; } .chip.sell .val { color:#fca5a5; }
+
+.banner { display:flex; height:80px; align-items:center; }
+.result { display:flex; align-items:center; gap:12px; }
+.result .emoji { font-size:40px; }
+.result .word { font-size:48px; font-weight:900; letter-spacing:.05em; }
+.result.buy .word { color:#34d399; text-shadow:0 0 24px rgba(52,211,153,.65); }
+.result.sell .word { color:#f87171; text-shadow:0 0 24px rgba(248,113,113,.65); }
+.hint { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.35em; color:#94a3b8; }
+.hint.pulse { animation:hint-pulse 1.8s ease-in-out infinite; }
+@keyframes hint-pulse { 0%,100%{opacity:.45} 50%{opacity:1} }
+.result-pop { animation:result-pop .45s cubic-bezier(.2,.9,.3,1.2); }
+@keyframes result-pop { 0%{transform:scale(.4);opacity:0} 60%{transform:scale(1.12);opacity:1} 100%{transform:scale(1);opacity:1} }
+
+/* ---------- 3D coin ---------- */
+.coin-toss { display:flex; flex-direction:column; align-items:center; }
+.coin-float { animation:coin-float 5.5s ease-in-out infinite; }
+@keyframes coin-float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+.coin-scene { position:relative; width:min(62vw,248px); height:min(62vw,248px); perspective:1100px;
+  border:none; background:none; cursor:pointer; transition:transform .15s; }
+.coin-scene:active { transform:scale(.97); }
+.coin-scene::before { content:''; position:absolute; inset:-22%; border-radius:50%; pointer-events:none;
+  background:radial-gradient(circle,rgba(248,226,142,.28) 0%,rgba(244,207,94,.08) 45%,transparent 70%); }
+.coin { position:absolute; inset:0; transform-style:preserve-3d; will-change:transform;
+  transition-property:transform; transition-timing-function:cubic-bezier(.12,.65,.12,1); }
+.coin-layer { position:absolute; inset:0; border-radius:50%;
+  background:repeating-conic-gradient(#e8c552 0deg 3deg,#7a5a08 3deg 6deg); }
+.coin-face-wrap { position:absolute; inset:0; transform-style:preserve-3d; }
+.coin-face { position:absolute; inset:0; border-radius:50%; overflow:hidden; backface-visibility:hidden;
+  background:radial-gradient(circle at 35% 28%,#ffeaa6 0%,#f4cf5e 32%,#d9a824 64%,#9a6f08 100%);
+  box-shadow:inset 0 0 0 2px #7a5a08,inset 0 6px 14px rgba(255,255,255,.5),inset 0 -10px 18px rgba(80,55,0,.5); }
+.coin-face svg { width:100%; height:100%; }
+.coin-sheen { position:absolute; inset:-30%; pointer-events:none; transform:translateX(-80%);
+  background:linear-gradient(115deg,transparent 38%,rgba(255,255,255,.34) 47%,rgba(255,248,214,.42) 50%,rgba(255,255,255,.34) 53%,transparent 62%);
+  animation:coin-sheen 5.5s ease-in-out infinite; }
+@keyframes coin-sheen { 0%,55%{transform:translateX(-80%)} 85%,100%{transform:translateX(80%)} }
+.coin-shadow { width:62%; height:18px; margin-top:30px; border-radius:50%; background:rgba(0,0,0,.6); filter:blur(12px); }
+.coin-toss-active .coin-float { animation:none; }
+.coin-toss-active .coin-scene { animation:coin-toss var(--spin-duration,3s) cubic-bezier(.2,.6,.2,1); }
+.coin-toss-active .coin-shadow { animation:coin-shadow var(--spin-duration,3s) cubic-bezier(.2,.6,.2,1); }
+@keyframes coin-toss {
+  0%{transform:translateY(0) scale(1) rotateX(0)}
+  22%{transform:translateY(-84px) scale(1.08) rotateX(16deg)}
+  55%{transform:translateY(-36px) scale(1.03) rotateX(-9deg)}
+  100%{transform:translateY(0) scale(1) rotateX(0)} }
+@keyframes coin-shadow {
+  0%{transform:scaleX(1);opacity:.6} 22%{transform:scaleX(.55);opacity:.25}
+  55%{transform:scaleX(.8);opacity:.45} 100%{transform:scaleX(1);opacity:.6} }
+
+footer { display:flex; flex-direction:column; align-items:center; gap:12px; width:100%; }
+.history { display:flex; min-height:18px; align-items:center; gap:6px; }
+.hdot { display:flex; width:18px; height:18px; align-items:center; justify-content:center;
+  border-radius:50%; font-size:10px; font-weight:900; opacity:.7; }
+.hdot.b { background:rgba(16,185,129,.8); color:#022c22; }
+.hdot.s { background:rgba(239,68,68,.8); color:#450a0a; }
+.hdot.last { opacity:1; box-shadow:0 0 0 2px rgba(255,255,255,.6); }
+.disclaimer { font-size:10px; letter-spacing:.025em; color:#475569; }
+.credit { display:flex; align-items:center; gap:8px; font-size:9.5px; letter-spacing:.025em; color:#334155; }
+.credit .reflink { font-weight:700; color:rgba(217,171,44,.8); background:none; border:none; cursor:pointer; font-size:9.5px; }
+.credit .reflink:hover { color:#f8e28e; }
+
+/* ---------- referral CTA ---------- */
+.cta-wrap { position:absolute; left:0; right:0; z-index:20; display:flex; justify-content:center; padding:0 24px;
+  bottom:calc(env(safe-area-inset-bottom,0px) + 92px); }
+.cta { position:relative; width:100%; max-width:320px; overflow:hidden; border-radius:16px;
+  border:1px solid rgba(217,171,44,.4); background:rgba(10,14,24,.9); padding:14px;
+  box-shadow:0 8px 32px rgba(0,0,0,.6); backdrop-filter:blur(4px);
+  animation:cta-rise .5s cubic-bezier(.2,.9,.3,1.1); }
+.cta::before { content:''; position:absolute; top:0; left:0; right:0; height:1px;
+  background:linear-gradient(90deg,transparent,rgba(248,226,142,.7),transparent); }
+.cta-close { position:absolute; top:10px; right:10px; display:flex; width:24px; height:24px;
+  align-items:center; justify-content:center; border-radius:50%; border:none; background:none;
+  color:#64748b; cursor:pointer; font-size:12px; }
+.cta-close:hover { background:rgba(255,255,255,.05); color:#cbd5e1; }
+.cta-title { padding-right:28px; font-size:13px; font-weight:700; line-height:1.4; color:#e2e8f0; }
+.cta-sub { margin-top:4px; padding-right:28px; font-size:11px; line-height:1.4; color:#94a3b8; }
+.cta-btn { margin-top:10px; display:flex; width:100%; align-items:center; justify-content:center; gap:8px;
+  border:none; border-radius:12px; padding:10px 16px; cursor:pointer;
+  background:linear-gradient(180deg,#f8e28e,#e8c552 50%,#c79f2e);
+  color:#3d2c04; font-size:13px; font-weight:900; letter-spacing:.025em;
+  box-shadow:0 2px 12px rgba(232,197,82,.35),inset 0 1px 0 rgba(255,255,255,.6); }
+.cta-btn:active { transform:scale(.97); }
+.cta-note { margin-top:8px; text-align:center; font-size:9.5px; letter-spacing:.025em; color:#475569; }
+@keyframes cta-rise { 0%{transform:translateY(24px) scale(.96);opacity:0} 100%{transform:translateY(0) scale(1);opacity:1} }
+[hidden] { display:none !important; }
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="chart"></canvas>
+  <div class="vignette"></div>
+
+  <div class="layout">
+    <header>
+      <div class="title-row">
+        <span class="btc">₿</span>
+        <h1>Trader's Coin</h1>
+      </div>
+      <p class="subtitle">Момент неопределённости? Пусть решит монета</p>
+      <div class="stats">
+        <div class="chip buy"><span class="lbl">BUY</span><span class="val" id="statBuy">0</span></div>
+        <div class="chip sell"><span class="lbl">SELL</span><span class="val" id="statSell">0</span></div>
+      </div>
+    </header>
+
+    <div class="banner" id="banner">
+      <p class="hint pulse" id="hint">Тапни по монете</p>
+    </div>
+
+    <div id="coinHost"></div>
+
+    <footer>
+      <div class="history" id="history"></div>
+      <p class="disclaimer">Не финансовый совет. Монета просто снимает с тебя выбор. 🪙</p>
+      <div class="credit">
+        <span>© 2026 ALIAKSANDR LEMESHAU (LANEX)</span>
+        <span id="creditSep" hidden>·</span>
+        <button class="reflink" id="footerRef" hidden>WhiteBird ↗</button>
+      </div>
+    </footer>
+  </div>
+
+  <div class="cta-wrap" id="ctaWrap" hidden>
+    <div class="cta">
+      <button class="cta-close" id="ctaClose" aria-label="Скрыть">✕</button>
+      <p class="cta-title" id="ctaTitle"></p>
+      <p class="cta-sub">Исполни сделку на криптообменнике WhiteBird</p>
+      <button class="cta-btn" id="ctaBtn">Открыть WhiteBird <span>↗</span></button>
+      <p class="cta-note">Реферальная ссылка автора — поддерживает развитие аппа 🙏</p>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var REF_URL = 'https://whitebird.io/signup?refid=UwOUC';
+  var tg = (window.Telegram && window.Telegram.WebApp) || null;
+  if (tg) {
+    if (tg.ready) tg.ready();
+    if (tg.expand) tg.expand();
+    if (tg.setHeaderColor) tg.setHeaderColor('#04060c');
+    if (tg.setBackgroundColor) tg.setBackgroundColor('#04060c');
+  }
+  function haptic(type, val) {
+    var h = tg && tg.HapticFeedback;
+    if (h && h[type]) { h[type](val); return true; }
+    return false;
+  }
+  function openReferral() {
+    haptic('impactOccurred', 'light');
+    if (tg && tg.openLink) tg.openLink(REF_URL);
+    else window.open(REF_URL, '_blank', 'noopener,noreferrer');
+  }
+
+  /* ---------- candle chart background ---------- */
+  var canvas = document.getElementById('chart');
+  var ctx = canvas.getContext('2d');
+  var dpr = Math.min(window.devicePixelRatio || 1, 2);
+  var CANDLE_W = 14 * dpr, GAP = 6 * dpr, STEP = CANDLE_W + GAP, SPEED = 0.35 * dpr;
+  var candles = [], price = 0.5, offset = 0, W = 0, H = 0;
+  function nextCandle() {
+    var drift = (Math.random() - 0.485) * 0.11;
+    var open = price;
+    var close = Math.min(0.92, Math.max(0.08, open + drift));
+    var high = Math.min(0.97, Math.max(open, close) + Math.random() * 0.05);
+    var low = Math.max(0.03, Math.min(open, close) - Math.random() * 0.05);
+    price = close;
+    return { o: open, c: close, h: high, l: low };
+  }
+  function resize() {
+    W = canvas.clientWidth * dpr; H = canvas.clientHeight * dpr;
+    canvas.width = W; canvas.height = H;
+    var needed = Math.ceil(W / STEP) + 3;
+    while (candles.length < needed) candles.push(nextCandle());
+  }
+  function y(v) { return H * (1 - v); }
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    ctx.strokeStyle = 'rgba(120,140,180,0.07)';
+    ctx.lineWidth = 1 * dpr;
+    for (var g = 1; g < 8; g++) {
+      ctx.beginPath(); ctx.moveTo(0, (H / 8) * g); ctx.lineTo(W, (H / 8) * g); ctx.stroke();
+    }
+    offset += SPEED;
+    while (offset >= STEP) { offset -= STEP; candles.shift(); candles.push(nextCandle()); }
+    for (var i = 0; i < candles.length; i++) {
+      var c = candles[i], x = i * STEP - offset, up = c.c >= c.o;
+      ctx.strokeStyle = up ? 'rgba(38,198,134,0.35)' : 'rgba(235,69,90,0.35)';
+      ctx.lineWidth = 1.6 * dpr;
+      ctx.beginPath(); ctx.moveTo(x + CANDLE_W / 2, y(c.h)); ctx.lineTo(x + CANDLE_W / 2, y(c.l)); ctx.stroke();
+      var top = y(Math.max(c.o, c.c));
+      var hh = Math.max(2 * dpr, Math.abs(y(c.o) - y(c.c)));
+      ctx.fillStyle = up ? 'rgba(38,198,134,0.5)' : 'rgba(235,69,90,0.5)';
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(x, top, CANDLE_W, hh, 2 * dpr); else ctx.rect(x, top, CANDLE_W, hh);
+      ctx.fill();
+    }
+    requestAnimationFrame(draw);
+  }
+  resize(); draw();
+  window.addEventListener('resize', resize);
+
+  /* ---------- coin SVG faces ---------- */
+  var ENGRAVE = '#3d2c04';
+  function defs(id) {
+    return '<defs>' +
+      '<radialGradient id="field-' + id + '" cx="38%" cy="30%" r="75%">' +
+      '<stop offset="0%" stop-color="#fff3c8"/><stop offset="35%" stop-color="#f6d876"/>' +
+      '<stop offset="70%" stop-color="#e0b232"/><stop offset="100%" stop-color="#b08010"/></radialGradient>' +
+      '<radialGradient id="rim-' + id + '" cx="50%" cy="50%" r="50%">' +
+      '<stop offset="78%" stop-color="#d9ab2c"/><stop offset="88%" stop-color="#f8e28e"/>' +
+      '<stop offset="94%" stop-color="#a67c0e"/><stop offset="100%" stop-color="#7a5a08"/></radialGradient>' +
+      '<linearGradient id="bronzeGrad-' + id + '" x1="0" y1="0" x2="0" y2="1">' +
+      '<stop offset="0%" stop-color="#8a6a14"/><stop offset="50%" stop-color="#6b4d0c"/>' +
+      '<stop offset="100%" stop-color="#4a3405"/></linearGradient>' +
+      '<filter id="relief-' + id + '" x="-25%" y="-25%" width="150%" height="150%">' +
+      '<feDropShadow dx="0" dy="1.4" stdDeviation="0.7" flood-color="#fff6cf" flood-opacity="0.9"/>' +
+      '<feDropShadow dx="0" dy="-1.6" stdDeviation="0.9" flood-color="#33240266" flood-opacity="0.85"/></filter>' +
+      '<path id="arc-top-' + id + '" d="M 38 120 A 82 82 0 0 1 202 120" fill="none"/>' +
+      '<path id="arc-bottom-' + id + '" d="M 50 120 A 70 70 0 0 0 190 120" fill="none"/>' +
+      '</defs>';
+  }
+  function bull(id) {
+    var b = 'url(#bronzeGrad-' + id + ')', r = 'url(#relief-' + id + ')';
+    return '<g transform="translate(44,40) scale(1.28)" filter="' + r + '">' +
+      '<path d="M30 40 C16 35 9 23 10 9 C21 17 31 23 41 26 Z" fill="' + b + '"/>' +
+      '<path d="M90 40 C104 35 111 23 110 9 C99 17 89 23 79 26 Z" fill="' + b + '"/>' +
+      '<path d="M14 15 C20 21 26 25 33 28 M106 15 C100 21 94 25 87 28" stroke="' + ENGRAVE + '" stroke-width="1.2" fill="none" opacity="0.55"/>' +
+      '<ellipse cx="25" cy="52" rx="11" ry="6" fill="' + b + '" transform="rotate(-22 25 52)"/>' +
+      '<ellipse cx="95" cy="52" rx="11" ry="6" fill="' + b + '" transform="rotate(22 95 52)"/>' +
+      '<path d="M41 25 L79 25 C88 25 92 34 92 46 C92 61 84 73 74 83 L70 96 C68 103 64 107 60 107 C56 107 52 103 50 96 L46 83 C36 73 28 61 28 46 C28 34 32 25 41 25 Z" fill="' + b + '"/>' +
+      '<path d="M44 40 C50 36 70 36 76 40" stroke="' + ENGRAVE + '" stroke-width="1.4" fill="none" opacity="0.5"/>' +
+      '<path d="M52 62 C54 68 56 74 58 80 M68 62 C66 68 64 74 62 80" stroke="' + ENGRAVE + '" stroke-width="1.1" fill="none" opacity="0.4"/>' +
+      '<circle cx="47" cy="53" r="3.6" fill="#f4cf5e"/><circle cx="47.8" cy="52.2" r="1.2" fill="' + ENGRAVE + '"/>' +
+      '<circle cx="73" cy="53" r="3.6" fill="#f4cf5e"/><circle cx="73.8" cy="52.2" r="1.2" fill="' + ENGRAVE + '"/>' +
+      '<circle cx="53" cy="91" r="3" fill="#f4cf5e"/><circle cx="67" cy="91" r="3" fill="#f4cf5e"/>' +
+      '<circle cx="60" cy="100" r="6.5" fill="none" stroke="#f8e28e" stroke-width="2.4"/>' +
+      '</g>';
+  }
+  function bear(id) {
+    var b = 'url(#bronzeGrad-' + id + ')', r = 'url(#relief-' + id + ')';
+    return '<g transform="translate(44,42) scale(1.28)" filter="' + r + '">' +
+      '<circle cx="32" cy="30" r="14" fill="' + b + '"/><circle cx="88" cy="30" r="14" fill="' + b + '"/>' +
+      '<circle cx="32" cy="30" r="6" fill="#d9ab2c"/><circle cx="88" cy="30" r="6" fill="#d9ab2c"/>' +
+      '<circle cx="60" cy="63" r="36" fill="' + b + '"/>' +
+      '<path d="M30 44 l-5 -3 M32 56 l-6 -2 M30 70 l-6 1 M90 44 l5 -3 M88 56 l6 -2 M90 70 l6 1 M44 30 l-3 -5 M76 30 l3 -5" stroke="' + ENGRAVE + '" stroke-width="1.2" fill="none" opacity="0.5" stroke-linecap="round"/>' +
+      '<path d="M42 46 C48 42 72 42 78 46" stroke="' + ENGRAVE + '" stroke-width="1.4" fill="none" opacity="0.5"/>' +
+      '<circle cx="47" cy="54" r="3.6" fill="#f4cf5e"/><circle cx="47.8" cy="53.2" r="1.2" fill="' + ENGRAVE + '"/>' +
+      '<circle cx="73" cy="54" r="3.6" fill="#f4cf5e"/><circle cx="73.8" cy="53.2" r="1.2" fill="' + ENGRAVE + '"/>' +
+      '<ellipse cx="60" cy="76" rx="15" ry="11.5" fill="#d9ab2c"/>' +
+      '<ellipse cx="60" cy="71" rx="5.5" ry="4.2" fill="' + ENGRAVE + '"/>' +
+      '<path d="M60 75 L60 80 M60 80 C56 84 52 83 50 81 M60 80 C64 84 68 83 70 81" stroke="' + ENGRAVE + '" stroke-width="2" fill="none" stroke-linecap="round"/>' +
+      '</g>';
+  }
+  function face(side, id) {
+    var word = side === 'bull' ? 'BUY' : 'SELL';
+    var serif = "font-family:Georgia,'Times New Roman',serif";
+    return '<svg viewBox="0 0 240 240" aria-hidden="true">' + defs(id) +
+      '<circle cx="120" cy="120" r="118" fill="url(#rim-' + id + ')"/>' +
+      '<circle cx="120" cy="120" r="118" fill="none" stroke="#5d4308" stroke-width="1.5"/>' +
+      '<circle cx="120" cy="120" r="104" fill="url(#field-' + id + ')"/>' +
+      '<circle cx="120" cy="120" r="104" fill="none" stroke="#8a6508" stroke-width="1.6" opacity="0.8"/>' +
+      '<circle cx="120" cy="120" r="96" fill="none" stroke="#7a5a08" stroke-width="4.5" stroke-dasharray="0.1 8.03" stroke-linecap="round" opacity="0.85"/>' +
+      '<g filter="url(#relief-' + id + ')" style="' + serif + '">' +
+      '<text font-size="12.5" font-weight="700" letter-spacing="3.2" fill="#6b4d0c">' +
+      '<textPath href="#arc-top-' + id + '" startOffset="50%" text-anchor="middle">★ IN VOLATILITY WE TRUST ★</textPath></text>' +
+      '<text font-size="10.5" font-weight="700" letter-spacing="4" fill="#6b4d0c">' +
+      '<textPath href="#arc-bottom-' + id + '" startOffset="50%" text-anchor="middle">EST · 2026</textPath></text></g>' +
+      (side === 'bull' ? bull(id) : bear(id)) +
+      '<g filter="url(#relief-' + id + ')">' +
+      '<text x="120" y="205" text-anchor="middle" font-size="30" font-weight="900" letter-spacing="9" fill="#6b4d0c" style="' + serif + '">' + word + '</text>' +
+      '<path d="M74 214 L166 214" stroke="#8a6508" stroke-width="1.6" opacity="0.8"/></g>' +
+      '<ellipse cx="86" cy="64" rx="58" ry="34" fill="#ffffff" opacity="0.16" transform="rotate(-24 86 64)"/>' +
+      '</svg>';
+  }
+
+  /* ---------- build 3D coin DOM ---------- */
+  var LAYERS = 18, HALF = LAYERS / 2;
+  var host = document.getElementById('coinHost');
+  var toss = document.createElement('div');
+  toss.className = 'coin-toss';
+  var layersHtml = '';
+  for (var li = 0; li < LAYERS; li++) {
+    layersHtml += '<div class="coin-layer" style="transform:translateZ(' + (li - HALF + 0.5) + 'px)"></div>';
+  }
+  toss.innerHTML =
+    '<div class="coin-float"><button type="button" class="coin-scene" aria-label="Подбросить монету">' +
+    '<div class="coin" id="coin">' + layersHtml +
+    '<div class="coin-face-wrap" style="transform:translateZ(' + HALF + 'px)">' +
+    '<div class="coin-face">' + face('bull', 'bull') + '<div class="coin-sheen"></div></div></div>' +
+    '<div class="coin-face-wrap" style="transform:rotateY(180deg) translateZ(' + HALF + 'px)">' +
+    '<div class="coin-face">' + face('bear', 'bear') + '<div class="coin-sheen"></div></div></div>' +
+    '</div></button></div><div class="coin-shadow"></div>';
+  host.appendChild(toss);
+
+  /* ---------- flip logic ---------- */
+  var coinEl = document.getElementById('coin');
+  var banner = document.getElementById('banner');
+  var ctaWrap = document.getElementById('ctaWrap');
+  var ctaTitle = document.getElementById('ctaTitle');
+  var statBuy = document.getElementById('statBuy');
+  var statSell = document.getElementById('statSell');
+  var historyEl = document.getElementById('history');
+  var footerRef = document.getElementById('footerRef');
+  var creditSep = document.getElementById('creditSep');
+  var rotation = 0, spinning = false, result = null, dismissed = false;
+  var stats = { buy: 0, sell: 0 }, hist = [];
+
+  document.querySelector('.coin-scene').addEventListener('click', flip);
+  document.getElementById('ctaBtn').addEventListener('click', openReferral);
+  footerRef.addEventListener('click', openReferral);
+  document.getElementById('ctaClose').addEventListener('click', function () {
+    dismissed = true; ctaWrap.hidden = true;
+    footerRef.hidden = false; creditSep.hidden = false;
+  });
+
+  function flip() {
+    if (spinning) return;
+    var res = Math.random() < 0.5 ? 'buy' : 'sell';
+    var mod = ((rotation % 360) + 360) % 360;
+    var faceAngle = res === 'buy' ? 0 : 180;
+    var delta = (faceAngle - mod + 360) % 360;
+    var spins = 6 + Math.floor(Math.random() * 4);
+    rotation += spins * 360 + delta;
+    var dur = 2.4 + Math.random() * 1.1;
+
+    spinning = true; result = null;
+    ctaWrap.hidden = true;
+    banner.innerHTML = '<p class="hint">Крутится…</p>';
+    toss.style.setProperty('--spin-duration', dur + 's');
+    toss.classList.remove('coin-toss-active');
+    void toss.offsetWidth; /* restart toss animation */
+    coinEl.style.transitionDuration = dur + 's';
+    coinEl.style.transform = 'rotateY(' + rotation + 'deg)';
+    toss.classList.add('coin-toss-active');
+
+    if (!haptic('impactOccurred', 'medium') && navigator.vibrate) navigator.vibrate(30);
+
+    setTimeout(function () {
+      spinning = false; result = res;
+      toss.classList.remove('coin-toss-active');
+      stats[res]++;
+      statBuy.textContent = stats.buy; statSell.textContent = stats.sell;
+      hist.push(res); if (hist.length > 14) hist.shift();
+      historyEl.innerHTML = hist.map(function (h, i) {
+        return '<span class="hdot ' + (h === 'buy' ? 'b' : 's') + (i === hist.length - 1 ? ' last' : '') + '">' +
+          (h === 'buy' ? 'B' : 'S') + '</span>';
+      }).join('');
+      banner.innerHTML =
+        '<div class="result result-pop ' + res + '"><span class="emoji">' + (res === 'buy' ? '🐂' : '🐻') + '</span>' +
+        '<span class="word">' + (res === 'buy' ? 'BUY' : 'SELL') + '</span></div>';
+      if (!haptic('notificationOccurred', res === 'buy' ? 'success' : 'warning') && navigator.vibrate) {
+        navigator.vibrate([40, 40, 40]);
+      }
+      if (!dismissed) {
+        setTimeout(function () {
+          if (!result || dismissed) return;
+          ctaTitle.textContent = (result === 'buy' ? 'Монета сказала BUY 🐂' : 'Монета сказала SELL 🐻') + ' — время действовать';
+          ctaWrap.hidden = false;
+        }, 1100);
+      }
+    }, dur * 1000 + 80);
+  }
+})();
+</script>
+</body>
+</html>
